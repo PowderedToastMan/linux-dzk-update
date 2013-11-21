@@ -1,0 +1,133 @@
+#! /usr/bin/env bash
+
+TMP=$(uuidgen)
+PWD=$(pwd)
+
+mkdir -p $TMP
+cd $TMP
+svn checkout --depth=empty svn://svn.archlinux.org/packages || exit $?
+cd packages
+svn update linux || exit $?
+cd linux/trunk
+
+mv linux.install linux-dzk.install
+mv linux.preset linux-dzk.preset
+
+patch <<EOF
+diff -U0 linux-dzk.orig/config linux-dzk/config
+--- linux-dzk.orig/config	2013-11-21 11:37:20.385211546 -0500
++++ linux-dzk/config	2013-11-21 11:36:39.190719102 -0500
+@@ -53 +53 @@
+-CONFIG_LOCALVERSION="-ARCH"
++CONFIG_LOCALVERSION="-dzk"
+@@ -494,3 +494,3 @@
+-CONFIG_HZ_300=y
+-# CONFIG_HZ_1000 is not set
+-CONFIG_HZ=300
++# CONFIG_HZ_300 is not set
++CONFIG_HZ_1000=y
++CONFIG_HZ=1000
+diff -U0 linux-dzk.orig/config.x86_64 linux-dzk/config.x86_64
+--- linux-dzk.orig/config.x86_64	2013-11-21 11:37:20.383211571 -0500
++++ linux-dzk/config.x86_64	2013-11-21 11:36:39.191719090 -0500
+@@ -54 +54 @@
+-CONFIG_LOCALVERSION="-ARCH"
++CONFIG_LOCALVERSION="-dzk"
+@@ -495,3 +495,3 @@
+-CONFIG_HZ_300=y
+-# CONFIG_HZ_1000 is not set
+-CONFIG_HZ=300
++# CONFIG_HZ_300 is not set
++CONFIG_HZ_1000=y
++CONFIG_HZ=1000
+diff -U0 linux-dzk.orig/linux-dzk.preset linux-dzk/linux-dzk.preset
+--- linux-dzk.orig/linux-dzk.preset	2013-11-21 11:37:20.382211583 -0500
++++ linux-dzk/linux-dzk.preset	2013-11-21 11:36:39.191719090 -0500
+@@ -4 +4 @@
+-ALL_kver="/boot/vmlinuz-linux"
++ALL_kver="/boot/vmlinuz-linux-dzk"
+@@ -9 +9 @@
+-default_image="/boot/initramfs-linux.img"
++default_image="/boot/initramfs-linux-dzk.img"
+@@ -13 +13 @@
+-fallback_image="/boot/initramfs-linux-fallback.img" 
++fallback_image="/boot/initramfs-linux-dzk-fallback.img" 
+diff -U0 linux-dzk.orig/PKGBUILD linux-dzk/PKGBUILD
+--- linux-dzk.orig/PKGBUILD	2013-11-21 11:37:20.382211583 -0500
++++ linux-dzk/PKGBUILD	2013-11-21 11:37:52.840811367 -0500
+@@ -5 +5 @@
+-pkgbase=linux               # Build stock -ARCH kernel
++pkgbase=linux-dzk           # Build stock -ARCH kernel
+@@ -15,2 +15 @@
+-source=("http://www.kernel.org/pub/linux/kernel/v3.x/\${_srcname}.tar.xz"
+-        "http://www.kernel.org/pub/linux/kernel/v3.x/patch-\${pkgver}.xz"
++source=(
+@@ -20 +19 @@
+-        'linux.preset'
++        'linux-dzk.preset'
+@@ -23,7 +21,0 @@
+-md5sums=('cc6ee608854e0da4b64f6c1ff8b6398c'
+-         '5a8cb5a659baeeb6df3fe22de8d32df6'
+-         '798bca5d2f0a1505c9b86a5227a2b339'
+-         '8fa6cbb28dda5a4b38730c7f728e1845'
+-         'eb14dcfd80c00852ef81ded6e826826a'
+-         '98beb36f9b8cf16e58de2483ea9985e3'
+-         'd50c1ac47394e9aec637002ef3392bd1')
+@@ -37,0 +30,2 @@
++_kernelgitroot="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
++_kernelgitname="linux"
+@@ -39,0 +34,27 @@
++  if [[ -n \$_kernelgitname && -n \$_kernelgitroot ]]; then
++    #################################
++    # Get the latest kernel sources
++    #################################
++    msg "Fetching sources..."
++
++    cd "\$startdir"
++    if [[ -d \$_kernelgitname ]]; then
++      msg2 "Updating sources..."
++      cd "\$_kernelgitname"
++      git fetch || true
++      cd "\$OLDPWD"
++    else
++      msg2 "Cloning the project..."
++      warning "The initial clone will download approximately 800 mb"
++      git clone --mirror "\$_kernelgitroot" "\$_kernelgitname"
++    fi
++
++    msg "Creating build branch..."
++    rm -rf "\${srcdir}/\${_srcname}"
++    git clone "\$_kernelgitname" "\${srcdir}/\${_srcname}"
++
++    # apply cmason's for-linus updates
++    cd "\${srcdir}/\${_srcname}"
++    git checkout v\${pkgver}
++    git pull git://git.kernel.org/pub/scm/linux/kernel/git/mason/linux-btrfs.git for-linus
++  fi
+@@ -42,3 +62,0 @@
+-  # add upstream patch
+-  patch -p1 -i "\${srcdir}/patch-\${pkgver}"
+-
+@@ -118 +136 @@
+-  install=linux.install
++  install=linux-dzk.install
+@@ -145 +163 @@
+-  install -D -m644 "\${srcdir}/linux.preset" "\${pkgdir}/etc/mkinitcpio.d/\${pkgbase}.preset"
++  install -D -m644 "\${srcdir}/linux-dzk.preset" "\${pkgdir}/etc/mkinitcpio.d/\${pkgbase}.preset"
+@@ -174 +192 @@
+-  provides=("kernel26\${_kernelname}-headers=\${pkgver}")
++  provides=("kernel26\${_kernelname}-headers=\${pkgver}" "linux-headers=\${pkgver}")
+EOF
+[ $? -eq 0 ] || exit $?
+sed -i '/^md5sums=/,/)$/d' PKGBUILD
+
+ln -s ~/pkg/linux-ck/linux
+
+makepkg --nobuild --noextract
+makepkg --geninteg >>PKGBUILD
+makepkg --sign || exit $?
+makepkg --source
+
+mv *.src.tar.gz     "${PWD}"
+mv *.pkg.tar.gz     "${PWD}"
+mv *.pkg.tar.gz.sig "${PWD}"
