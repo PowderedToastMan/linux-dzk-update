@@ -129,5 +129,4 @@ makepkg --sign || exit $?
 makepkg --source
 
 mv *.src.tar.gz     "${PWD}"
-mv *.pkg.tar.gz     "${PWD}"
-mv *.pkg.tar.gz.sig "${PWD}"
+mv *.pkg.tar.*      "${PWD}"
