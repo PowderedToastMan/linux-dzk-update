@@ -65,14 +65,6 @@ diff -U0 linux-dzk.orig/PKGBUILD linux-dzk/PKGBUILD
 @@ -20 +19 @@
 -        'linux.preset'
 +        'linux-dzk.preset'
-@@ -23,7 +21,0 @@
--md5sums=('cc6ee608854e0da4b64f6c1ff8b6398c'
--         '5a8cb5a659baeeb6df3fe22de8d32df6'
--         '798bca5d2f0a1505c9b86a5227a2b339'
--         '8fa6cbb28dda5a4b38730c7f728e1845'
--         'eb14dcfd80c00852ef81ded6e826826a'
--         '98beb36f9b8cf16e58de2483ea9985e3'
--         'd50c1ac47394e9aec637002ef3392bd1')
 @@ -37,0 +30,2 @@
 +_kernelgitroot="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 +_kernelgitname="linux"
