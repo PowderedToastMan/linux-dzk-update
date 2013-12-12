@@ -1,7 +1,6 @@
 #! /usr/bin/env bash
 
 TMP=$(uuidgen)
-PWD=$(pwd)
 
 mkdir -p $TMP
 cd $TMP
@@ -113,12 +112,20 @@ EOF
 [ $? -eq 0 ] || exit $?
 sed -i '/^md5sums=/,/)$/d' PKGBUILD
 
-ln -s ~/pkg/linux-ck/linux
+ln -s /usr/src/linux
 
 makepkg --nobuild --noextract
 makepkg --geninteg >>PKGBUILD
 makepkg --sign || exit $?
 makepkg --source
 
-mv *.src.tar.gz     "${PWD}"
-mv *.pkg.tar.*      "${PWD}"
+pkgver=$(grep '^pkgver=' PKGBUILD | sed 's/^pkgver=//g')
+pkgrel=$(grep '^pkgrel=' PKGBUILD | sed 's/^pkgrel=//g')
+
+mv linux-dzk-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz*         /srv/http/repo/x86_64
+mv linux-dzk-docs-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz*    /srv/http/repo/x86_64
+mv linux-dzk-headers-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz* /srv/http/repo/x86_64
+cd /srv/http/repo/x86_64
+repo-add thekilempire.db.tar.gz linux-dzk-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz      \
+                                linux-dzk-docs-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz \
+                                linux-dzk-headers-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz
