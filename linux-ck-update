@@ -1,0 +1,80 @@
+#! /usr/bin/env bash
+
+TMP=$(uuidgen)
+
+mkdir -p $TMP
+cd $TMP
+
+yaourt -G linux-ck
+cd linux-ck
+
+patch <<EOF
+--- PKGBUILD.orig	2013-12-12 09:27:34.000000000 -0500
++++ PKGBUILD	2013-12-15 09:55:48.256668152 -0500
+@@ -46 +46 @@
+-_BFQ_enable_=
++_BFQ_enable_=y
+@@ -65,2 +65 @@
+-source=("http://www.kernel.org/pub/linux/kernel/v3.x/\${_srcname}.tar.xz"
+-"http://www.kernel.org/pub/linux/kernel/v3.x/patch-\${pkgver}.xz"
++source=(
+@@ -93,0 +93,2 @@
++_kernelgitroot="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
++_kernelgitname="linux"
+@@ -96 +97,17 @@
+-	cd "\${_srcname}"
++	if [[ -n \$_kernelgitname && -n \$_kernelgitroot ]]; then
++		#################################
++		# Get the latest kernel sources
++		#################################
++		msg "Fetching sources..."
++
++		cd "\$startdir"
++		if [[ -d \$_kernelgitname ]]; then
++			msg2 "Updating sources..."
++			cd "\$_kernelgitname"
++			git fetch || true
++			cd "\$OLDPWD"
++		else
++			msg2 "Cloning the project..."
++			warning "The initial clone will download approximately 800 mb"
++			git clone --mirror "\$_kernelgitroot" "\$_kernelgitname"
++		fi
+@@ -98,3 +115,10 @@
+-	# add upstream patch
+-	msg "Patching source to v\$pkgver"
+-	patch -p1 -i "\${srcdir}/patch-\${pkgver}"
++		msg "Creating build branch..."
++		rm -rf "\${srcdir}/\${_srcname}"
++		git clone "\$_kernelgitname" "\${srcdir}/\${_srcname}"
++
++		# apply cmason's for-linus updates
++		cd "\${srcdir}/\${_srcname}"
++		git checkout v\${pkgver}
++		git pull git://git.kernel.org/pub/scm/linux/kernel/git/mason/linux-btrfs.git for-linus
++	fi
++	cd "\${srcdir}/\${_srcname}"
+@@ -236 +260 @@
+-	provides=("linux-ck=\${pkgver}")
++	provides=("linux-ck=\${pkgver}" "linux=\${pkgver}")
+EOF
+[ $? -eq 0 ] || exit $?
+sed -i '/^md5sums=/,/)$/d' PKGBUILD
+
+ln -s /usr/src/linux
+
+makepkg --nobuild --noextract
+makepkg --geninteg >>PKGBUILD
+makepkg --sign || exit $?
+makepkg --source
+
+pkgver=$(grep '^pkgver=' PKGBUILD | sed 's/^pkgver=//g')
+pkgrel=$(grep '^pkgrel=' PKGBUILD | sed 's/^pkgrel=//g')
+
+mv linux-ck-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz*         /srv/http/repo/x86_64
+mv linux-ck-docs-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz*    /srv/http/repo/x86_64
+mv linux-ck-headers-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz* /srv/http/repo/x86_64
+cd /srv/http/repo/x86_64
+repo-add thekilempire.db.tar.gz linux-ck-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz      \
+                                linux-ck-docs-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz \
+                                linux-ck-headers-${pkgver}-${pkgrel}-x86_64.pkg.tar.xz
